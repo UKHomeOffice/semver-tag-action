@@ -14,7 +14,7 @@ Action that identifies the latest SemVer tag, increments it and tags the version
 
 ### Detailed inputs
 
-#### increments
+#### increment
 
 Accepted values are 
 * `major` e.g. 1.4.5 -> 2.0.0
