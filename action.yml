@@ -1,0 +1,15 @@
+name: 'Semver Tag Action'
+description: 'Create the next semantic version and tag it'
+inputs:
+  increment:
+    description: 'The amount to increment the tag by - [major, minor, patch]'
+    required: true
+  github_token:
+    description: 'Github API token'
+    required: true
+outputs:
+  version:
+    description: 'The new SemVer tag based on the existing tag + increment'
+runs:
+  using: 'node16'
+  main: 'dist/index.js'

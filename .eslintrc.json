@@ -1,0 +1,24 @@
+{
+    "env": {
+        "node": true,
+        "es6": true,
+        "es2021": true,
+        "jest": true
+    },
+    "extends": [
+        "plugin:github/recommended",
+        "prettier"
+    ],
+    "plugins": [
+        "github",
+        "prettier"
+    ],
+    "parserOptions": {
+        "ecmaVersion": 2021
+    },
+    "rules": {
+        "i18n-text/no-en": "off",
+        "import/no-commonjs": "off",
+        "filenames/match-regex": "off"
+    }
+}
