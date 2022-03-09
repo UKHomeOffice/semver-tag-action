@@ -7,7 +7,7 @@ async function createTag(incrementedTag) {
     const octokit = github.getOctokit(token)
     const sha = github.context.sha
     const ref = `refs/tags/${incrementedTag}`
-    await octokit.git.createRef({
+    await octokit.rest.git.createRef({
         ...github.context.repo,
         ref,
         sha
@@ -19,7 +19,7 @@ async function getLatestTag() {
     const token = core.getInput('github_token', { required: true })
     const octokit = github.getOctokit(token)
 
-    const { data: refs } = await octokit.git.listMatchingRefs({
+    const { data: refs } = await octokit.rest.git.listMatchingRefs({
         ...github.context.repo,
         namespace: 'tags/'
     })
@@ -33,16 +33,20 @@ async function getLatestTag() {
     return versions[0] || semver.parse('0.0.0')
 }
 
+async function getNewTag(latestTag, increment) {
+    console.log(`Incrementing latest tag "${latestTag.toString()}"`)
+    const newTag = semver.inc(latestTag, increment).toString();
+    console.log(`Calculated new tag "${newTag}"`)
+    return newTag
+}
+
 async function run() {
     try {
         const increment = core.getInput('increment', {required: true})
         const latestTag = await getLatestTag()
-        console.log(`Using latest tag "${latestTag.toString()}"`)
-        const incrementedTag = semver.inc(latestTag, increment).toString();
-        console.log(`Calculated new tag "${incrementedTag}"`)
-        core.setOutput('version', incrementedTag)
-
-        await createTag(incrementedTag)
+        const newTag = await getNewTag(latestTag, increment)
+        core.setOutput('version', newTag)
+        await createTag(newTag)
     } catch (error) {
         core.setFailed(error.message)
     }
