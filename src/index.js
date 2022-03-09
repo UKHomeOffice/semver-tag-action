@@ -25,9 +25,9 @@ async function calculateNewTag(latestTag, increment) {
     return newTag
 }
 
-async function createTag(incrementedTag, octokit, { context } = github) {
+async function createTag(newTag, octokit, { context } = github) {
     const sha = context.sha
-    const ref = `refs/tags/${incrementedTag}`
+    const ref = `refs/tags/${newTag}`
     await octokit.rest.git.createRef({
         ...context.repo,
         ref,
