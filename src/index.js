@@ -2,9 +2,7 @@ const core = require("@actions/core");
 const github = require("@actions/github")
 const semver = require("semver")
 
-async function createTag(incrementedTag) {
-    const token = core.getInput('github_token', { required: true })
-    const octokit = github.getOctokit(token)
+async function createTag(incrementedTag, octokit) {
     const sha = github.context.sha
     const ref = `refs/tags/${incrementedTag}`
     await octokit.rest.git.createRef({
@@ -14,11 +12,8 @@ async function createTag(incrementedTag) {
     })
 }
 
-async function getLatestTag() {
+async function getLatestTag(octokit) {
     console.log('Getting Latest Tag from Repo')
-    const token = core.getInput('github_token', { required: true })
-    const octokit = github.getOctokit(token)
-
     const { data: refs } = await octokit.rest.git.listMatchingRefs({
         ...github.context.repo,
         namespace: 'tags/'
@@ -42,11 +37,14 @@ async function getNewTag(latestTag, increment) {
 
 async function run() {
     try {
+        const token = core.getInput('github_token', { required: true })
+        const octokit = github.getOctokit(token)
+
         const increment = core.getInput('increment', {required: true})
-        const latestTag = await getLatestTag()
+        const latestTag = await getLatestTag(octokit)
         const newTag = await getNewTag(latestTag, increment)
+        await createTag(newTag, octokit)
         core.setOutput('version', newTag)
-        await createTag(newTag)
     } catch (error) {
         core.setFailed(error.message)
     }
