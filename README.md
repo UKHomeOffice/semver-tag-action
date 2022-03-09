@@ -53,7 +53,7 @@ jobs:
         with:
           labels: minor,major,patch
           mode: singular
-      - uses: zwaldowski/semver-release-action@v1
+      - uses: UKHomeOffice/semver-tag-action@main
         with:
         increment: ${{ steps.label.outputs.matchedLabels }}
         github_token: ${{ secrets.GITHUB_TOKEN }}
