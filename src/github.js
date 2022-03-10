@@ -21,7 +21,7 @@ async function createTag(newTag, octokit, { context } = github) {
     })
 }
 
-async function getOctoKit(token) {
+function getOctoKit(token) {
     return github.getOctokit(token)
 }
 
