@@ -41,12 +41,13 @@ This action can only be triggered on the following events: `pull_request` and `p
 name: 'SemVer tag the commit'
 on:
   pull_request:
-    types: [ labeled, unlabeled, opened, reopened, synchronize ]
+    types: [ closed ]
 
 jobs:
   build:
     name: SemVer tag the commit
     runs-on: ubuntu-latest
+    if: github.event.pull_request.merged == true && github.base_ref == 'main'
     steps:
       - id: label
         uses: UKHomeOffice/match-label-action@main
@@ -55,8 +56,8 @@ jobs:
           mode: singular
       - uses: UKHomeOffice/semver-tag-action@main
         with:
-        increment: ${{ steps.label.outputs.matchedLabels }}
-        github_token: ${{ secrets.GITHUB_TOKEN }}
+          increment: ${{ steps.label.outputs.matchedLabels }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
 ```
 
 ### Generating dist/index.js
