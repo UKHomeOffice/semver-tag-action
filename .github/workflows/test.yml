@@ -1,0 +1,14 @@
+name: "units-test"
+on:
+  pull_request:
+  push:
+
+jobs:
+  # unit tests
+  pr-units:
+    name: Pull Request Action Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - run: npm ci
+      - run: npm run test

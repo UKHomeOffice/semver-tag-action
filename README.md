@@ -14,7 +14,7 @@ Action that identifies the latest SemVer tag, increments it and tags the version
 
 ### Detailed inputs
 
-#### increments
+#### increment
 
 Accepted values are 
 * `major` e.g. 1.4.5 -> 2.0.0
@@ -41,22 +41,23 @@ This action can only be triggered on the following events: `pull_request` and `p
 name: 'SemVer tag the commit'
 on:
   pull_request:
-    types: [ labeled, unlabeled, opened, reopened, synchronize ]
+    types: [ closed ]
 
 jobs:
   build:
     name: SemVer tag the commit
     runs-on: ubuntu-latest
+    if: github.event.pull_request.merged == true && github.base_ref == 'main'
     steps:
       - id: label
         uses: UKHomeOffice/match-label-action@main
         with:
           labels: minor,major,patch
           mode: singular
-      - uses: zwaldowski/semver-release-action@v1
+      - uses: UKHomeOffice/semver-tag-action@main
         with:
-        increment: ${{ steps.label.outputs.matchedLabels }}
-        github_token: ${{ secrets.GITHUB_TOKEN }}
+          increment: ${{ steps.label.outputs.matchedLabels }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
 ```
 
 ### Generating dist/index.js
