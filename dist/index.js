@@ -11359,6 +11359,72 @@ try {
 
 /***/ }),
 
+/***/ 8396:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+const github = __nccwpck_require__(5438)
+const core = __nccwpck_require__(2186);
+
+async function getTags(octokit, { context } = github) {
+    core.info('Getting Latest Tag from Repo');
+    const { data: refs } = await octokit.rest.git.listMatchingRefs({
+        ...context.repo,
+        namespace: 'tags/'
+    })
+
+    return refs.map(ref => ref.ref.replace(/^refs\/tags\//g, ''))
+}
+
+async function createTag(newTag, octokit, { context } = github) {
+    const sha = context.sha
+    const ref = `refs/tags/${newTag}`
+    await octokit.rest.git.createRef({
+        ...context.repo,
+        ref,
+        sha
+    })
+}
+
+async function getOctoKit(token) {
+    return github.getOctokit(token)
+}
+
+module.exports = { getTags, createTag, getOctoKit }
+
+
+/***/ }),
+
+/***/ 9225:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+const semver = __nccwpck_require__(1383);
+const core = __nccwpck_require__(2186);
+
+function calculateNewTag(latestTag, increment) {
+    core.info(`Incrementing latest tag "${latestTag}" by ${increment}`)
+    const newTag = semver.inc(latestTag, increment.toLowerCase()).toString();
+    core.info(`Calculated new tag "${newTag}"`)
+
+    return newTag
+}
+
+function getLatestTag(tags) {
+    const versions = tags?.map(tag => semver.parse(tag, { loose: true }))
+        .filter(tag => tag !== null)
+        .sort(semver.rcompare)
+
+    if (versions === undefined) {
+        return '0.0.0'
+    }
+
+    return versions[0]?.toString() ?? '0.0.0'
+}
+
+module.exports = { calculateNewTag, getLatestTag }
+
+
+/***/ }),
+
 /***/ 2877:
 /***/ ((module) => {
 
@@ -11529,50 +11595,22 @@ var __webpack_exports__ = {};
 // This entry need to be wrapped in an IIFE because it need to be isolated against other modules in the chunk.
 (() => {
 const core = __nccwpck_require__(2186);
-const github = __nccwpck_require__(5438)
-const semver = __nccwpck_require__(1383)
 
-async function getLatestTag(octokit, { context } = github) {
-    console.log('Getting Latest Tag from Repo')
-    const { data: refs } = await octokit.rest.git.listMatchingRefs({
-        ...context.repo,
-        namespace: 'tags/'
-    })
+const { getTags, createTag, getOctoKit } = __nccwpck_require__(8396);
+const { calculateNewTag, getLatestTag } = __nccwpck_require__(9225);
 
-    const versions = refs
-        .map(ref => ref.ref.replace(/^refs\/tags\//g, ''))
-        .map(tag => semver.parse(tag, { loose: true }))
-        .filter(version => version !== null)
-        .sort(semver.rcompare)
-
-    return versions[0] || semver.parse('0.0.0')
-}
-
-async function calculateNewTag(latestTag, increment) {
-    console.log(`Incrementing latest tag "${latestTag.toString()}" by ${increment}`)
-    const newTag = semver.inc(latestTag, increment).toString();
-    console.log(`Calculated new tag "${newTag}"`)
-    return newTag
-}
-
-async function createTag(newTag, octokit, { context } = github) {
-    const sha = context.sha
-    const ref = `refs/tags/${newTag}`
-    await octokit.rest.git.createRef({
-        ...context.repo,
-        ref,
-        sha
-    })
-}
 
 async function run() {
     try {
         const token = core.getInput('github_token', { required: true })
-        const octokit = github.getOctokit(token)
+        const octokit = getOctoKit(token)
 
         const increment = core.getInput('increment', {required: true})
-        const latestTag = await getLatestTag(octokit)
-        const newTag = await calculateNewTag(latestTag, increment)
+        const tags = await getTags(octokit)
+
+        const latestTag = getLatestTag(tags)
+        const newTag = calculateNewTag(latestTag, increment)
+
         await createTag(newTag, octokit)
         core.setOutput('version', newTag)
     } catch (error) {
