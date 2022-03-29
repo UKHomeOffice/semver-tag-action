@@ -52,11 +52,18 @@ function getOctoKit(token) {
   return github.getOctokit(token);
 }
 
+const isPullRequest = ({ context } = github) => {
+  return (
+    context.eventName === "pull_request" ||
+    context.eventName === "pull_request_target"
+  );
+};
 module.exports = {
   getTagsForRepo,
   createTag,
   getOctoKit,
   getTagByCommitSha,
   getHeadRefSha,
+  isPullRequest,
   repoHasTag,
 };

@@ -5,6 +5,7 @@ const {
   getOctoKit,
   getHeadRefSha,
   getTagByCommitSha,
+  isPullRequest,
   repoHasTag,
 } = require("../src/github");
 const { calculateNewTag, getLatestTag } = require("../src/semver");
@@ -14,6 +15,12 @@ async function run() {
     const token = core.getInput("github_token", { required: true });
     const increment = core.getInput("increment", { required: true });
     const octokit = getOctoKit(token);
+    if (!isPullRequest()) {
+      core.setFailed(
+        "Invalid event specified, it should be used on [pull_request, pull_request_target] events"
+      );
+      return;
+    }
 
     const repoTags = await getTagsForRepo(octokit);
     const newTag =
