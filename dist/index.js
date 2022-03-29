@@ -11416,12 +11416,19 @@ function getOctoKit(token) {
   return github.getOctokit(token);
 }
 
+const isPullRequest = ({ context } = github) => {
+  return (
+    context.eventName === "pull_request" ||
+    context.eventName === "pull_request_target"
+  );
+};
 module.exports = {
   getTagsForRepo,
   createTag,
   getOctoKit,
   getTagByCommitSha,
   getHeadRefSha,
+  isPullRequest,
   repoHasTag,
 };
 
@@ -11643,6 +11650,7 @@ const {
   getOctoKit,
   getHeadRefSha,
   getTagByCommitSha,
+  isPullRequest,
   repoHasTag,
 } = __nccwpck_require__(8396);
 const { calculateNewTag, getLatestTag } = __nccwpck_require__(9225);
@@ -11652,6 +11660,12 @@ async function run() {
     const token = core.getInput("github_token", { required: true });
     const increment = core.getInput("increment", { required: true });
     const octokit = getOctoKit(token);
+    if (!isPullRequest()) {
+      core.setFailed(
+        "Invalid event specified, it should be used on [pull_request, pull_request_target] events"
+      );
+      return;
+    }
 
     const repoTags = await getTagsForRepo(octokit);
     const newTag =
