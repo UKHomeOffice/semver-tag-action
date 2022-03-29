@@ -11484,10 +11484,17 @@ function calculateNewTag(tag, identifier) {
   return newTag;
 }
 
+function sortTags(tags) {
+  return tags
+    .filter((tag) => semver.valid(tag.semver))
+    .sort((tagA, tagB) => semver.rcompare(tagA.semver, tagB.semver, true));
+}
+
 module.exports = {
+  calculateNewTag,
   getAllowedSemverIdentifier,
   isSemverIdentifier,
-  calculateNewTag,
+  sortTags,
 };
 
 
@@ -11677,6 +11684,7 @@ const {
   calculateNewTag,
   getAllowedSemverIdentifier,
   isSemverIdentifier,
+  sortTags,
 } = __nccwpck_require__(9225);
 
 async function run() {
@@ -11692,6 +11700,7 @@ async function run() {
       { name: "increment", options: { required: true } },
       { name: "github_token", options: { required: true } },
       { name: "dry_run", default: false },
+      { name: "default_use_head_tag", default: false },
     ]);
 
     if (!isSemverIdentifier(inputs.increment.toLowerCase())) {
@@ -11702,8 +11711,12 @@ async function run() {
     }
 
     const octokit = getOctoKit(inputs.github_token);
-    const repoTags = await getTagsForRepo(octokit);
-    const newTag = generateSemverTag(repoTags, inputs.increment.toLowerCase());
+    const repoTags = sortTags(await getTagsForRepo(octokit));
+    const newTag = generateSemverTag(
+      repoTags,
+      inputs.increment.toLowerCase(),
+      inputs.default_use_head_tag
+    );
 
     if (!newTag) {
       core.setFailed("No new tag could be created.");
@@ -11720,18 +11733,23 @@ async function run() {
   }
 }
 
-function generateSemverTag(tags, identifier) {
+function generateSemverTag(tags, identifier, defaultGreatest) {
   if (tags.length === 0) {
     return calculateNewTag("0.0.0", identifier);
   }
 
   const headSha = getHeadRefSha();
-  const headSemver = getTagByCommitSha(tags, headSha);
+  let headSemver = getTagByCommitSha(tags, headSha);
   if (!headSemver) {
-    core.setFailed(`No tag found on repository for SHA: ${headSha}`);
-    return;
+    if (defaultGreatest) {
+      core.info("No tag found for SHA. Finding highest repository SemVer tag.");
+      headSemver = tags.shift()?.semver;
+    } else {
+      core.setFailed(`No tag found on repository for SHA: ${headSha}`);
+      return;
+    }
   }
-  core.info(`Found tag ${headSemver} for head SHA ${headSha}`);
+  core.info(`Using tag ${headSemver}`);
 
   const newTag = calculateNewTag(headSemver, identifier);
   core.info(`Checking for new SemVer value: ${newTag}`);

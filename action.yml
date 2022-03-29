@@ -10,6 +10,9 @@ inputs:
   dry_run:
     description: 'Specify to not create resulting tag against repository'
     required: false
+  default_use_head_tag:
+    description: 'Use the highest semver tag value on repository'
+    required: false
 outputs:
   version:
     description: 'The new SemVer tag based on the existing tag + increment'
