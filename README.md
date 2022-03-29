@@ -10,13 +10,12 @@ Action that identifies the latest SemVer tag, increments it and tags the version
 | ------------------------------------------------------------------- | --------------------------------------------------------------------------- | --------------------- | -------- |
 | [increment](#increment) | The amount to increment the tag by | | Yes |
 | [github_token](#github_token) | Github API token | | Yes |
-
+| [dry_run](#dry_run) | Whether to not create tag after calculation | false | Yes |
 
 ### Detailed inputs
 
 #### increment
 
-Accepted values are 
 The main accepted values are:
 * `major` e.g. 1.4.5 -> 2.0.0
 * `minor` e.g. 1.4.5 -> 1.5.0
@@ -32,6 +31,14 @@ Other accepted values include:
 #### github_token
 
 Required to make API requests and tagging. pass using `secrets.GITHUB_TOKEN`.
+
+#### dry_run
+
+Whether the tag should not be created after generation. 
+
+This is useful for ascertaining if the semver version is valid for the repository. This is coerced by a 'falsey' check on the input.
+
+Default: `false`
 
 ### List of outputs
 
