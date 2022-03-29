@@ -7,6 +7,9 @@ inputs:
   github_token:
     description: 'Github API token'
     required: true
+  dry_run:
+    description: 'Specify to not create resulting tag against repository'
+    required: false
 outputs:
   version:
     description: 'The new SemVer tag based on the existing tag + increment'

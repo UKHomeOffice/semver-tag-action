@@ -11691,6 +11691,7 @@ async function run() {
     const inputs = getActionInputs([
       { name: "increment", options: { required: true } },
       { name: "github_token", options: { required: true } },
+      { name: "dry_run", default: false },
     ]);
 
     if (!isSemverIdentifier(inputs.increment.toLowerCase())) {
@@ -11708,9 +11709,11 @@ async function run() {
       core.setFailed("No new tag could be created.");
       return;
     }
-    core.info(`Creating tag ${newTag}`);
 
-    await createTag(newTag, octokit);
+    if (!inputs.dry_run) {
+      core.info(`Creating tag ${newTag}`);
+      await createTag(newTag, octokit);
+    }
     core.setOutput("version", newTag);
   } catch (error) {
     core.setFailed(error.message);
