@@ -1,67 +1,45 @@
-const { calculateNewTag, getLatestTag } = require("../src/semver");
+const { calculateNewTag, isSemverIdentifier } = require("../src/semver");
 
 describe("calculateNewTag", () => {
-  test("Should increment major", () => {
+  test("should increment correctly", () => {
+    expect(calculateNewTag("1.0.0", "pre")).toEqual("1.0.0-0");
+    expect(calculateNewTag("1.0.0", "premajor")).toEqual("2.0.0-0");
+    expect(calculateNewTag("1.0.0", "preminor")).toEqual("1.1.0-0");
+    expect(calculateNewTag("1.0.0", "prepatch")).toEqual("1.0.1-0");
+    expect(calculateNewTag("1.0.0", "prerelease")).toEqual("1.0.1-0");
     expect(calculateNewTag("1.0.0", "major")).toEqual("2.0.0");
-  });
-
-  test("Should increment minor", () => {
     expect(calculateNewTag("1.0.0", "minor")).toEqual("1.1.0");
-  });
-
-  test("Should increment patch", () => {
     expect(calculateNewTag("1.0.0", "patch")).toEqual("1.0.1");
   });
 
-  test("Should increment MAJOR", () => {
-    expect(calculateNewTag("1.0.0", "MAJOR")).toEqual("2.0.0");
+  test("should return undefined if increment not valid", () => {
+    expect(calculateNewTag("1.0.0", undefined)).toEqual(undefined);
+    expect(calculateNewTag("1.0.0", null)).toEqual(undefined);
+    expect(calculateNewTag("1.0.0", "TEST")).toEqual(undefined);
   });
 
-  test("Should increment MINOR", () => {
-    expect(calculateNewTag("1.0.0", "MINOR")).toEqual("1.1.0");
-  });
-
-  test("Should increment PATCH", () => {
-    expect(calculateNewTag("1.0.0", "PATCH")).toEqual("1.0.1");
+  test("should return undefined if initial tag not valid", () => {
+    expect(calculateNewTag(undefined, "patch")).toEqual(undefined);
+    expect(calculateNewTag(null, "patch")).toEqual(undefined);
+    expect(calculateNewTag("TEST", "patch")).toEqual(undefined);
   });
 });
 
-describe("getLatestTag", () => {
-  test("Latest Tag Patch", () => {
-    expect(getLatestTag([{ semver: "0.0.1" }, { semver: "0.0.2" }])).toEqual(
-      "0.0.2"
-    );
+describe("isSemverIdentifier", () => {
+  test("should allow all accepted tags", () => {
+    expect(isSemverIdentifier("pre")).toEqual(true);
+    expect(isSemverIdentifier("premajor")).toEqual(true);
+    expect(isSemverIdentifier("preminor")).toEqual(true);
+    expect(isSemverIdentifier("prepatch")).toEqual(true);
+    expect(isSemverIdentifier("prerelease")).toEqual(true);
+    expect(isSemverIdentifier("major")).toEqual(true);
+    expect(isSemverIdentifier("minor")).toEqual(true);
+    expect(isSemverIdentifier("patch")).toEqual(true);
   });
 
-  test("Latest Tag Minor", () => {
-    expect(getLatestTag([{ semver: "0.0.1" }, { semver: "0.1.0" }])).toEqual(
-      "0.1.0"
-    );
-  });
-
-  test("Latest Tag Major", () => {
-    expect(getLatestTag([{ semver: "0.0.1" }, { semver: "1.0.0" }])).toEqual(
-      "1.0.0"
-    );
-  });
-
-  test("Latest Tag Single", () => {
-    expect(getLatestTag([{ semver: "1.0.0" }])).toEqual("1.0.0");
-  });
-
-  test("Latest Tag Empty", () => {
-    expect(getLatestTag([])).toEqual("0.0.0");
-  });
-
-  test("Latest Tag array null", () => {
-    expect(getLatestTag([null])).toEqual("0.0.0");
-  });
-
-  test("Latest Tag array undefined", () => {
-    expect(getLatestTag([undefined])).toEqual("0.0.0");
-  });
-
-  test("Latest Tag null", () => {
-    expect(getLatestTag(null)).toEqual("0.0.0");
+  test("should return undefined on invalid identifier", () => {
+    expect(isSemverIdentifier(null)).toEqual(false);
+    expect(isSemverIdentifier(undefined)).toEqual(false);
+    expect(isSemverIdentifier("TEST")).toEqual(false);
   });
 });
