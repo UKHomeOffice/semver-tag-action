@@ -1,4 +1,8 @@
-const { calculateNewTag, isSemverIdentifier } = require("../src/semver");
+const {
+  calculateNewTag,
+  isSemverIdentifier,
+  sortTags,
+} = require("../src/semver");
 
 describe("calculateNewTag", () => {
   test("should increment correctly", () => {
@@ -41,5 +45,23 @@ describe("isSemverIdentifier", () => {
     expect(isSemverIdentifier(null)).toEqual(false);
     expect(isSemverIdentifier(undefined)).toEqual(false);
     expect(isSemverIdentifier("TEST")).toEqual(false);
+  });
+});
+
+describe("sortTags", () => {
+  test("should sort tags by descending", () => {
+    const tags = [
+      { semver: "1.1.0", sha: 110 },
+      { semver: "1.0.1", sha: 101 },
+      { semver: undefined, sha: undefined },
+      { semver: "TEST", sha: undefined },
+      { semver: "2.0.0", sha: 200 },
+    ];
+
+    expect(sortTags(tags)).toEqual([
+      { semver: "2.0.0", sha: 200 },
+      { semver: "1.1.0", sha: 110 },
+      { semver: "1.0.1", sha: 101 },
+    ]);
   });
 });

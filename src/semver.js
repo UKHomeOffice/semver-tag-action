@@ -30,8 +30,15 @@ function calculateNewTag(tag, identifier) {
   return newTag;
 }
 
+function sortTags(tags) {
+  return tags
+    .filter((tag) => semver.valid(tag.semver))
+    .sort((tagA, tagB) => semver.rcompare(tagA.semver, tagB.semver, true));
+}
+
 module.exports = {
+  calculateNewTag,
   getAllowedSemverIdentifier,
   isSemverIdentifier,
-  calculateNewTag,
+  sortTags,
 };
