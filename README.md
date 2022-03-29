@@ -17,13 +17,21 @@ Action that identifies the latest SemVer tag, increments it and tags the version
 #### increment
 
 Accepted values are 
+The main accepted values are:
 * `major` e.g. 1.4.5 -> 2.0.0
 * `minor` e.g. 1.4.5 -> 1.5.0
 * `patch` e.g. 1.4.5 -> 1.4.6
 
+Other accepted values include:
+* `pre`
+* `premajor`
+* `preminor`
+* `prepatch`
+* `prerelease`
+
 #### github_token
 
-Requried to make API requests and tagging. pass using `secrets.GITHUB_TOKEN`
+Required to make API requests and tagging. pass using `secrets.GITHUB_TOKEN`.
 
 ### List of outputs
 

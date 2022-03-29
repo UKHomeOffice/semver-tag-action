@@ -1,20 +1,22 @@
 const core = require("@actions/core");
 const {
-  getTagsForRepo,
   createTag,
-  getOctoKit,
+  getActionInputs,
   getHeadRefSha,
+  getOctoKit,
   getTagByCommitSha,
+  getTagsForRepo,
   isPullRequest,
   repoHasTag,
 } = require("../src/github");
-const { calculateNewTag, getLatestTag } = require("../src/semver");
+const {
+  calculateNewTag,
+  getAllowedSemverIdentifier,
+  isSemverIdentifier,
+} = require("../src/semver");
 
 async function run() {
   try {
-    const token = core.getInput("github_token", { required: true });
-    const increment = core.getInput("increment", { required: true });
-    const octokit = getOctoKit(token);
     if (!isPullRequest()) {
       core.setFailed(
         "Invalid event specified, it should be used on [pull_request, pull_request_target] events"
@@ -22,11 +24,21 @@ async function run() {
       return;
     }
 
+    const inputs = getActionInputs([
+      { name: "increment", options: { required: true } },
+      { name: "github_token", options: { required: true } },
+    ]);
+
+    if (!isSemverIdentifier(inputs.increment.toLowerCase())) {
+      core.setFailed(
+        `Invalid increment provided, acceptable values are: ${getAllowedSemverIdentifier().toString()}`
+      );
+      return;
+    }
+
+    const octokit = getOctoKit(inputs.github_token);
     const repoTags = await getTagsForRepo(octokit);
-    const newTag =
-      increment === "hotfix"
-        ? generateHotfixTag(repoTags)
-        : generateSemverTag(repoTags, increment);
+    const newTag = generateSemverTag(repoTags, inputs.increment.toLowerCase());
 
     if (!newTag) {
       core.setFailed("No new tag could be created.");
@@ -41,7 +53,11 @@ async function run() {
   }
 }
 
-function generateHotfixTag(tags) {
+function generateSemverTag(tags, identifier) {
+  if (tags.length === 0) {
+    return calculateNewTag("0.0.0", identifier);
+  }
+
   const headSha = getHeadRefSha();
   const headSemver = getTagByCommitSha(tags, headSha);
   if (!headSemver) {
@@ -50,21 +66,15 @@ function generateHotfixTag(tags) {
   }
   core.info(`Found tag ${headSemver} for head SHA ${headSha}`);
 
-  const newPatchTag = calculateNewTag(headSemver, "patch");
-  core.info(`Checking for new patch value: ${newPatchTag}`);
+  const newTag = calculateNewTag(headSemver, identifier);
+  core.info(`Checking for new SemVer value: ${newTag}`);
 
-  if (repoHasTag(tags, newPatchTag)) {
-    core.setFailed(`Tag ${newPatchTag} already exists on repository`);
+  if (repoHasTag(tags, newTag)) {
+    core.setFailed(`Tag ${newTag} already exists on repository`);
     return;
   }
 
-  return newPatchTag;
-}
-
-function generateSemverTag(tags, increment) {
-  const latestTag = getLatestTag(tags);
-  core.info(`Latest repo tag: ${latestTag}`);
-  return calculateNewTag(latestTag, increment);
+  return newTag;
 }
 
 run();

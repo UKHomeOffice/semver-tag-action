@@ -2,7 +2,7 @@ name: 'Semver Tag Action'
 description: 'Create the next semantic version and tag it'
 inputs:
   increment:
-    description: 'The amount to increment the tag by - [major, minor, patch]'
+    description: 'The amount to increment the tag by - any Semver accepted value allowed'
     required: true
   github_token:
     description: 'Github API token'

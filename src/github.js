@@ -58,12 +58,26 @@ const isPullRequest = ({ context } = github) => {
     context.eventName === "pull_request_target"
   );
 };
+
+const getActionInputs = (variables) => {
+  return variables.reduce((obj, variable) => {
+    let value = core.getInput(variable.name, variable.options);
+    if (!value) {
+      if (variable.hasOwnProperty("default")) {
+        value = variable.default;
+      }
+    }
+    return Object.assign(obj, { [variable.name]: value });
+  }, {});
+};
+
 module.exports = {
-  getTagsForRepo,
   createTag,
+  getActionInputs,
+  getHeadRefSha,
   getOctoKit,
   getTagByCommitSha,
-  getHeadRefSha,
+  getTagsForRepo,
   isPullRequest,
   repoHasTag,
 };

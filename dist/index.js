@@ -11422,12 +11422,26 @@ const isPullRequest = ({ context } = github) => {
     context.eventName === "pull_request_target"
   );
 };
+
+const getActionInputs = (variables) => {
+  return variables.reduce((obj, variable) => {
+    let value = core.getInput(variable.name, variable.options);
+    if (!value) {
+      if (variable.hasOwnProperty("default")) {
+        value = variable.default;
+      }
+    }
+    return Object.assign(obj, { [variable.name]: value });
+  }, {});
+};
+
 module.exports = {
-  getTagsForRepo,
   createTag,
+  getActionInputs,
+  getHeadRefSha,
   getOctoKit,
   getTagByCommitSha,
-  getHeadRefSha,
+  getTagsForRepo,
   isPullRequest,
   repoHasTag,
 };
@@ -11441,35 +11455,40 @@ module.exports = {
 const semver = __nccwpck_require__(1383);
 const core = __nccwpck_require__(2186);
 
-function calculateNewTag(latestTag, increment) {
-  core.info(`Incrementing latest tag "${latestTag}" by ${increment}`);
-  const newTag = semver.inc(latestTag, increment.toLowerCase()).toString();
+function getAllowedSemverIdentifier() {
+  return [
+    "pre",
+    "premajor",
+    "preminor",
+    "prepatch",
+    "prerelease",
+    "major",
+    "minor",
+    "patch",
+  ];
+}
+
+function isSemverIdentifier(identifier) {
+  return getAllowedSemverIdentifier().includes(identifier);
+}
+
+function calculateNewTag(tag, identifier) {
+  if (!semver.valid(tag) || !isSemverIdentifier(identifier)) {
+    return;
+  }
+
+  core.info(`Incrementing latest tag "${tag}" by ${identifier}`);
+  const newTag = semver.inc(tag, identifier.toString()).toString();
   core.info(`Calculated new tag "${newTag}"`);
 
   return newTag;
 }
 
-function getLatestTag(tags) {
-  if (!tags) {
-    core.info("No tags present - returning 0.0.0");
-    return "0.0.0";
-  }
-
-  const version = tags
-    .filter((tag) => tag)
-    .map((tag) => semver.parse(tag.semver, { loose: true }))
-    .sort(semver.rcompare)
-    .shift();
-
-  if (version === undefined) {
-    core.info("No tag present - returning 0.0.0");
-    return "0.0.0";
-  }
-
-  return version.toString();
-}
-
-module.exports = { calculateNewTag, getLatestTag };
+module.exports = {
+  getAllowedSemverIdentifier,
+  isSemverIdentifier,
+  calculateNewTag,
+};
 
 
 /***/ }),
@@ -11645,21 +11664,23 @@ var __webpack_exports__ = {};
 (() => {
 const core = __nccwpck_require__(2186);
 const {
-  getTagsForRepo,
   createTag,
-  getOctoKit,
+  getActionInputs,
   getHeadRefSha,
+  getOctoKit,
   getTagByCommitSha,
+  getTagsForRepo,
   isPullRequest,
   repoHasTag,
 } = __nccwpck_require__(8396);
-const { calculateNewTag, getLatestTag } = __nccwpck_require__(9225);
+const {
+  calculateNewTag,
+  getAllowedSemverIdentifier,
+  isSemverIdentifier,
+} = __nccwpck_require__(9225);
 
 async function run() {
   try {
-    const token = core.getInput("github_token", { required: true });
-    const increment = core.getInput("increment", { required: true });
-    const octokit = getOctoKit(token);
     if (!isPullRequest()) {
       core.setFailed(
         "Invalid event specified, it should be used on [pull_request, pull_request_target] events"
@@ -11667,11 +11688,21 @@ async function run() {
       return;
     }
 
+    const inputs = getActionInputs([
+      { name: "increment", options: { required: true } },
+      { name: "github_token", options: { required: true } },
+    ]);
+
+    if (!isSemverIdentifier(inputs.increment.toLowerCase())) {
+      core.setFailed(
+        `Invalid increment provided, acceptable values are: ${getAllowedSemverIdentifier().toString()}`
+      );
+      return;
+    }
+
+    const octokit = getOctoKit(inputs.github_token);
     const repoTags = await getTagsForRepo(octokit);
-    const newTag =
-      increment === "hotfix"
-        ? generateHotfixTag(repoTags)
-        : generateSemverTag(repoTags, increment);
+    const newTag = generateSemverTag(repoTags, inputs.increment.toLowerCase());
 
     if (!newTag) {
       core.setFailed("No new tag could be created.");
@@ -11686,7 +11717,11 @@ async function run() {
   }
 }
 
-function generateHotfixTag(tags) {
+function generateSemverTag(tags, identifier) {
+  if (tags.length === 0) {
+    return calculateNewTag("0.0.0", identifier);
+  }
+
   const headSha = getHeadRefSha();
   const headSemver = getTagByCommitSha(tags, headSha);
   if (!headSemver) {
@@ -11695,21 +11730,15 @@ function generateHotfixTag(tags) {
   }
   core.info(`Found tag ${headSemver} for head SHA ${headSha}`);
 
-  const newPatchTag = calculateNewTag(headSemver, "patch");
-  core.info(`Checking for new patch value: ${newPatchTag}`);
+  const newTag = calculateNewTag(headSemver, identifier);
+  core.info(`Checking for new SemVer value: ${newTag}`);
 
-  if (repoHasTag(tags, newPatchTag)) {
-    core.setFailed(`Tag ${newPatchTag} already exists on repository`);
+  if (repoHasTag(tags, newTag)) {
+    core.setFailed(`Tag ${newTag} already exists on repository`);
     return;
   }
 
-  return newPatchTag;
-}
-
-function generateSemverTag(tags, increment) {
-  const latestTag = getLatestTag(tags);
-  core.info(`Latest repo tag: ${latestTag}`);
-  return calculateNewTag(latestTag, increment);
+  return newTag;
 }
 
 run();
