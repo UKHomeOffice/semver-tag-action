@@ -21,6 +21,6 @@
     "eslint-config-prettier": "^8.4.0",
     "eslint-plugin-github": "^4.3.5",
     "eslint-plugin-prettier": "^4.0.0",
-    "jest": "^27.5.1"
+    "jest": "^28.0.2"
   }
 }
