@@ -6,7 +6,7 @@ const {
   getOctoKit,
   getTagByCommitSha,
   getTagsForRepo,
-  isPullRequest,
+  isAcceptedEventType,
   repoHasTag,
 } = require("../src/github");
 const {
@@ -18,9 +18,9 @@ const {
 
 async function run() {
   try {
-    if (!isPullRequest()) {
+    if (!isAcceptedEventType()) {
       core.setFailed(
-        "Invalid event specified, it should be used on [pull_request, pull_request_target] events"
+        "Invalid event specified, it should be used on [pull_request, pull_request_target, workflow_dispatch] events."
       );
       return;
     }
@@ -34,7 +34,7 @@ async function run() {
 
     if (!isSemverIdentifier(inputs.increment.toLowerCase())) {
       core.setFailed(
-        `Invalid increment provided, acceptable values are: ${getAllowedSemverIdentifier().toString()}`
+        `Invalid increment provided, acceptable values are: ${getAllowedSemverIdentifier().toString()}.`
       );
       return;
     }

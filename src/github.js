@@ -52,10 +52,9 @@ function getOctoKit(token) {
   return github.getOctokit(token);
 }
 
-const isPullRequest = ({ context } = github) => {
-  return (
-    context.eventName === "pull_request" ||
-    context.eventName === "pull_request_target"
+const isAcceptedEventType = ({ context } = github) => {
+  return ["pull_request", "pull_request_target", "workflow_dispatch"].includes(
+    context.eventName
   );
 };
 
@@ -78,6 +77,6 @@ module.exports = {
   getOctoKit,
   getTagByCommitSha,
   getTagsForRepo,
-  isPullRequest,
+  isAcceptedEventType,
   repoHasTag,
 };
