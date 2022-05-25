@@ -59,7 +59,7 @@ Default: `false`
 
 ### Usage
 
-This action can only be triggered on the following events: `pull_request` and `pull_request_target`. If used on other events the job will fail.
+This action can only be triggered on the following events: `pull_request`, `pull_request_target`, `workflow_dispatch`. If used on other events the job will fail.
 
 #### Increment tag on repository
 

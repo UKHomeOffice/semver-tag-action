@@ -12532,10 +12532,9 @@ function getOctoKit(token) {
   return github.getOctokit(token);
 }
 
-const isPullRequest = ({ context } = github) => {
-  return (
-    context.eventName === "pull_request" ||
-    context.eventName === "pull_request_target"
+const isAcceptedEventType = ({ context } = github) => {
+  return ["pull_request", "pull_request_target", "workflow_dispatch"].includes(
+    context.eventName
   );
 };
 
@@ -12558,7 +12557,7 @@ module.exports = {
   getOctoKit,
   getTagByCommitSha,
   getTagsForRepo,
-  isPullRequest,
+  isAcceptedEventType,
   repoHasTag,
 };
 
@@ -12793,7 +12792,7 @@ const {
   getOctoKit,
   getTagByCommitSha,
   getTagsForRepo,
-  isPullRequest,
+  isAcceptedEventType,
   repoHasTag,
 } = __nccwpck_require__(8396);
 const {
@@ -12805,9 +12804,9 @@ const {
 
 async function run() {
   try {
-    if (!isPullRequest()) {
+    if (!isAcceptedEventType()) {
       core.setFailed(
-        "Invalid event specified, it should be used on [pull_request, pull_request_target] events"
+        "Invalid event specified, it should be used on [pull_request, pull_request_target, workflow_dispatch] events."
       );
       return;
     }
@@ -12821,7 +12820,7 @@ async function run() {
 
     if (!isSemverIdentifier(inputs.increment.toLowerCase())) {
       core.setFailed(
-        `Invalid increment provided, acceptable values are: ${getAllowedSemverIdentifier().toString()}`
+        `Invalid increment provided, acceptable values are: ${getAllowedSemverIdentifier().toString()}.`
       );
       return;
     }
