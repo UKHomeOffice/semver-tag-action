@@ -31,7 +31,11 @@ function getTagByCommitSha(tags, sha) {
 }
 
 function getHeadRefSha({ context } = github) {
-  return context.payload.pull_request.base?.sha;
+  if (isPullRequest()) {
+    return context.payload.pull_request.base?.sha;
+  } else if (isWorkflowDispatch()) {
+    return context.sha;
+  }
 }
 
 function repoHasTag(tags, semver) {
@@ -52,10 +56,16 @@ function getOctoKit(token) {
   return github.getOctokit(token);
 }
 
-const isAcceptedEventType = ({ context } = github) => {
-  return ["pull_request", "pull_request_target", "workflow_dispatch"].includes(
-    context.eventName
-  );
+const isAcceptedEventType = () => {
+  return isPullRequest() || isWorkflowDispatch();
+};
+
+const isPullRequest = ({ context } = github) => {
+  return ["pull_request", "pull_request_target"].includes(context.eventName);
+};
+
+const isWorkflowDispatch = ({ context } = github) => {
+  return context.eventName === "workflow_dispatch";
 };
 
 const getActionInputs = (variables) => {
