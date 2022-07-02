@@ -1,6 +1,6 @@
 # SemVer Tag A Commit
 
-Action that identifies the latest SemVer tag, increments it and tags the version on the current commit.
+Action that identifies the latest SemVer tag, increments it, and tags the current commit.
 
 ## Semantic Tagging Action
 
@@ -9,6 +9,7 @@ Action that identifies the latest SemVer tag, increments it and tags the version
 | Input                                                               | Description                                                                 | Default               | Required |
 | ------------------------------------------------------------------- | --------------------------------------------------------------------------- | --------------------- | -------- |
 | [increment](#increment) | The amount to increment the tag by | | Yes |
+| [tag](#value) | The tag to use instead of calculating one | | No|
 | [github_token](#github_token) | Github API token | | Yes |
 | [dry_run](#dry_run) | Whether to not create tag after calculation | false | No |
 | [default_use_head_tag](#default_use_head_tag) | Use greatest tag when SHA is not linked to tag | false | No |
@@ -29,13 +30,17 @@ Other accepted values include:
 * `prepatch`
 * `prerelease`
 
+#### tag
+
+Tag to use instead of calculating one. Can be used in conjuction with `dry_run` to calculate a value in one step and tag it later on.
+
 #### github_token
 
 Required to make API requests and tagging. pass using `secrets.GITHUB_TOKEN`.
 
 #### dry_run
 
-Whether the tag should not be created after generation. 
+Whether the tag should not be created after generation.
 
 This is useful for ascertaining if the semver version is valid for the repository. This is coerced by a 'falsey' check on the input.
 
@@ -45,7 +50,7 @@ Default: `false`
 
 Sometimes the head commit of a branch does not refer to a tag. If a user ignore certain merges into a branch - maybe using a `skip-release` approach.
 
-In these circumstances a user may want to user the highest tag on the repository as the base.  
+In these circumstances a user may want to user the highest tag on the repository as the base.
 
 This is coerced by a 'falsey' check on the input.
 
@@ -80,6 +85,7 @@ jobs:
         with:
           labels: minor,major,patch
           mode: singular
+          
       - uses: UKHomeOffice/semver-tag-action@main
         with:
           increment: ${{ steps.label.outputs.matchedLabels }}
@@ -105,11 +111,51 @@ jobs:
         with:
           labels: minor,major,patch
           mode: singular
+          
       - uses: UKHomeOffice/semver-tag-action@main
         with:
           increment: ${{ steps.label.outputs.matchedLabels }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
           dry_run: true
+```
+
+#### Split the calcuation and tag using dry-run and tag
+
+```yaml
+name: 'SemVer - Dry-run'
+on:
+  pull_request:
+    types: [ closed ]
+
+jobs:
+  build:
+    name: SemVer - Dry-run
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.merged == true
+    steps:
+      - id: label
+        uses: UKHomeOffice/match-label-action@main
+        with:
+          labels: minor,major,patch
+          mode: singular
+          
+      - name: Calculate SemVer increment
+        id: increment
+        uses: UKHomeOffice/semver-tag-action@v2
+        with:
+          increment: ${{ steps.label.outputs.matchedLabels }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          dry_run: true
+          
+      - uses: some-provider/any-action@main
+
+      - name: Tag repository with SemVer
+          uses: UKHomeOffice/semver-tag-action@v2
+          with:
+            tag: ${{ steps.increment.outputs.version }}
+            github_token: ${{ secrets.GITHUB_TOKEN }}
+            default_use_head_tag: ${{ github.base_ref == 'main' }}
+
 ```
 
 #### Increment tag while supporting head SHA with tag
@@ -131,6 +177,7 @@ jobs:
         with:
           labels: minor,major,patch
           mode: singular
+          
       - uses: UKHomeOffice/semver-tag-action@main
         with:
           increment: ${{ steps.label.outputs.matchedLabels }}
@@ -140,14 +187,14 @@ jobs:
 
 ### Generating dist/index.js
 
-We use [ncc](https://github.com/vercel/ncc) to package the action into an executable file. 
+We use [ncc](https://github.com/vercel/ncc) to package the action into an executable file.
 This removes the need to either check in the node_modules folder or build the action prior to using.
 
 We need to ensure that the dist folder is updated whenever there is a functionality change, otherwise we won't be running the correct version within jobs that use this action.
 
-Before checking creating your Pull Request you should ensure that you have built this file by running `npm run build` within the root directory. 
+Before creating your Pull Request you should ensure that you have built this file by running `npm run build` within the root directory.
 
-A blocking workflow called [check-dist](.github/workflows/check-dist.yml) is enabled that checks this dist folder for changes happens at both push to main and on pull request events.
+A blocking workflow called [check-dist](.github/workflows/check-dist.yml) is enabled that checks this dist folder for changes at both 'push to main' and on 'pull request events'.
 
 ## License
 

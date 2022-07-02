@@ -13,6 +13,7 @@ const {
   calculateNewTag,
   getAllowedSemverIdentifier,
   isSemverIdentifier,
+  isValidTag,
   sortTags,
 } = require("../src/semver");
 
@@ -26,26 +27,29 @@ async function run() {
     }
 
     const inputs = getActionInputs([
-      { name: "increment", options: { required: true } },
+      { name: "increment", options: { required: false } },
+      { name: "tag", options: { required: false } },
       { name: "github_token", options: { required: true } },
       { name: "dry_run", default: false },
       { name: "default_use_head_tag", default: false },
     ]);
 
-    if (!isSemverIdentifier(inputs.increment.toLowerCase())) {
+    if (!isValidTag(inputs.tag) && !isSemverIdentifier(inputs.increment)) {
       core.setFailed(
-        `Invalid increment provided, acceptable values are: ${getAllowedSemverIdentifier().toString()}.`
+        `Invalid increment or SemVer tag provided, acceptable increment values are: ${getAllowedSemverIdentifier().toString()}.`
       );
       return;
     }
 
     const octokit = getOctoKit(inputs.github_token);
     const repoTags = sortTags(await getTagsForRepo(octokit));
-    const newTag = generateSemverTag(
-      repoTags,
-      inputs.increment.toLowerCase(),
-      inputs.default_use_head_tag
-    );
+    const newTag = inputs.tag
+      ? inputs.tag
+      : generateSemverTag(
+          repoTags,
+          inputs.increment.toLowerCase(),
+          inputs.default_use_head_tag
+        );
 
     if (!newTag) {
       core.setFailed("No new tag could be created.");
