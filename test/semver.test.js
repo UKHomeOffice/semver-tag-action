@@ -2,6 +2,7 @@ const {
   calculateNewTag,
   isSemverIdentifier,
   sortTags,
+  parseTag,
 } = require("../src/semver");
 
 describe("calculateNewTag", () => {
@@ -45,6 +46,17 @@ describe("isSemverIdentifier", () => {
     expect(isSemverIdentifier(null)).toEqual(false);
     expect(isSemverIdentifier(undefined)).toEqual(false);
     expect(isSemverIdentifier("TEST")).toEqual(false);
+  });
+});
+
+describe("parseTag", () => {
+  test("should allow all accepted tags", () => {
+    expect(parseTag("1.0.0")).toEqual("1.0.0");
+    expect(parseTag("1.0")).toEqual("1.0.0");
+    expect(parseTag("1")).toEqual("1.0.0");
+    expect(parseTag("1.0.0-0")).toEqual("1.0.0");
+    expect(parseTag("Sausages")).toEqual(undefined);
+    expect(parseTag("")).toEqual(undefined);
   });
 });
 

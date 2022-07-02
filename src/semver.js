@@ -15,11 +15,15 @@ function getAllowedSemverIdentifier() {
 }
 
 function isSemverIdentifier(identifier) {
-  return getAllowedSemverIdentifier().includes(identifier);
+  return getAllowedSemverIdentifier().includes(identifier?.toLowerCase());
+}
+
+function parseTag(tag) {
+  return semver.coerce(tag)?.toString();
 }
 
 function calculateNewTag(tag, identifier) {
-  if (!semver.valid(tag) || !isSemverIdentifier(identifier)) {
+  if (!parseTag(tag) || !isSemverIdentifier(identifier)) {
     return;
   }
 
@@ -40,5 +44,6 @@ module.exports = {
   calculateNewTag,
   getAllowedSemverIdentifier,
   isSemverIdentifier,
+  parseTag,
   sortTags,
 };
