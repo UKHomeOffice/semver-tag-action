@@ -1,10 +1,8 @@
 name: Check Dist
 
 on:
-  push:
-    branches:
-      - main
   pull_request:
+    types: [ opened, reopened, synchronize ]
 
 jobs:
   check-dist:
