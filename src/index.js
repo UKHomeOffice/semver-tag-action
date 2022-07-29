@@ -2,24 +2,15 @@ const core = require("@actions/core");
 const {
   createTag,
   getActionInputs,
-  getHeadRefSha,
-  getOctoKit,
-  getTagByCommitSha,
   getTagsForRepo,
-  isAcceptedEventType,
-  repoHasTag,
+  isValidEventType,
+  valueExistsAsTag,
 } = require("../src/github");
-const {
-  calculateNewTag,
-  getAllowedSemverIdentifier,
-  isSemverIdentifier,
-  isValidTag,
-  sortTags,
-} = require("../src/semver");
+const { isValidTag } = require("../src/semver");
 
 async function run() {
   try {
-    if (!isAcceptedEventType()) {
+    if (!isValidEventType()) {
       core.setFailed(
         "Invalid event specified, it should be used on [pull_request, pull_request_target, workflow_dispatch] events."
       );
@@ -27,68 +18,30 @@ async function run() {
     }
 
     const inputs = getActionInputs([
-      { name: "increment", options: { required: false } },
       { name: "tag", options: { required: false } },
       { name: "github_token", options: { required: true } },
-      { name: "dry_run", default: false },
-      { name: "default_use_head_tag", default: false },
     ]);
 
-    if (!isValidTag(inputs.tag) && !isSemverIdentifier(inputs.increment)) {
-      core.setFailed(
-        `Invalid increment or SemVer tag provided, acceptable increment values are: ${getAllowedSemverIdentifier().toString()}.`
-      );
+    const newTag = await checkSemverTag(inputs.github_token, inputs.tag);
+
+    if (!isValidTag(newTag)) {
+      core.setFailed("Invalid SemVer tag provided.");
       return;
     }
 
-    const octokit = getOctoKit(inputs.github_token);
-    const repoTags = sortTags(await getTagsForRepo(octokit));
-    const newTag = inputs.tag
-      ? inputs.tag
-      : generateSemverTag(
-          repoTags,
-          inputs.increment.toLowerCase(),
-          inputs.default_use_head_tag
-        );
-
-    if (!newTag) {
-      core.setFailed("No new tag could be created.");
-      return;
-    }
-
-    if (!inputs.dry_run) {
-      core.info(`Creating tag ${newTag}`);
-      await createTag(newTag, octokit);
-    }
-    core.setOutput("version", newTag);
+    core.info(`Creating tag ${newTag}.`);
+    await createTag(newTag, inputs.github_token);
   } catch (error) {
     core.setFailed(error.message);
   }
 }
 
-function generateSemverTag(tags, identifier, defaultGreatest) {
-  if (tags.length === 0) {
-    return calculateNewTag("0.0.0", identifier);
-  }
+async function checkSemverTag(token, newTag) {
+  const tags = await getTagsForRepo(token);
 
-  const headSha = getHeadRefSha();
-  let headSemver = getTagByCommitSha(tags, headSha);
-  if (!headSemver) {
-    if (defaultGreatest) {
-      core.info("No tag found for SHA. Finding highest repository SemVer tag.");
-      headSemver = tags.shift()?.semver;
-    } else {
-      core.setFailed(`No tag found on repository for SHA: ${headSha}`);
-      return;
-    }
-  }
-  core.info(`Using tag ${headSemver}`);
-
-  const newTag = calculateNewTag(headSemver, identifier);
-  core.info(`Checking for new SemVer value: ${newTag}`);
-
-  if (repoHasTag(tags, newTag)) {
-    core.setFailed(`Tag ${newTag} already exists on repository`);
+  core.info(`Checking if new tag value ${newTag} already exists as tag.`);
+  if (valueExistsAsTag(tags, newTag)) {
+    core.setFailed(`value ${newTag} already exists as tag`);
     return;
   }
 
