@@ -7,6 +7,10 @@ inputs:
   github_token:
     description: 'Github API token'
     required: true
+  move_major_tag:
+    description: 'Create or move a Major tag'
+    default: 'false'
+    required: false
 runs:
   using: 'node16'
   main: 'dist/index.js'

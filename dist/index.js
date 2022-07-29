@@ -11902,6 +11902,14 @@ async function createTag(newTag, token, { context } = github) {
   });
 }
 
+async function deleteTag(tag, token, { context } = github) {
+  const ref = `tags/${tag}`;
+  await github.getOctokit(token).rest.git.deleteRef({
+    ...context.repo,
+    ref,
+  });
+}
+
 function valueExistsAsTag(tags, semver) {
   return tags.some((tag) => tag.semver === semver);
 }
@@ -11932,6 +11940,7 @@ const getActionInputs = (variables) => {
 
 module.exports = {
   createTag,
+  deleteTag,
   getActionInputs,
   getTagsForRepo,
   isValidEventType,
@@ -11950,8 +11959,18 @@ function isValidTag(tag) {
   return semver.valid(tag);
 }
 
+function getMajorTag(tag) {
+  const cleanTag = semver.coerce(tag);
+  // We dont want to move major for pre-releases
+  if (cleanTag?.toString() !== semver.valid(tag)) {
+    return null;
+  }
+  return `v${semver.major(cleanTag)}`;
+}
+
 module.exports = {
   isValidTag,
+  getMajorTag,
 };
 
 
@@ -12129,12 +12148,13 @@ var __webpack_exports__ = {};
 const core = __nccwpck_require__(2186);
 const {
   createTag,
+  deleteTag,
   getActionInputs,
   getTagsForRepo,
   isValidEventType,
   valueExistsAsTag,
 } = __nccwpck_require__(8396);
-const { isValidTag } = __nccwpck_require__(9225);
+const { isValidTag, getMajorTag } = __nccwpck_require__(9225);
 
 async function run() {
   try {
@@ -12148,32 +12168,43 @@ async function run() {
     const inputs = getActionInputs([
       { name: "tag", options: { required: false } },
       { name: "github_token", options: { required: true } },
+      { name: "move_major_tag", options: { required: false } },
     ]);
 
-    const newTag = await checkSemverTag(inputs.github_token, inputs.tag);
+    const newTag = inputs.tag;
 
     if (!isValidTag(newTag)) {
-      core.setFailed("Invalid SemVer tag provided.");
+      core.setFailed(`Invalid SemVer value ${newTag}.`);
       return;
     }
 
-    core.info(`Creating tag ${newTag}.`);
+    const existingTags = await getTagsForRepo(inputs.github_token);
+    core.info(`Checking if new tag value ${newTag} already exists as tag.`);
+    if (valueExistsAsTag(existingTags, newTag)) {
+      core.setFailed(`Value ${newTag} already exists as tag`);
+      return;
+    }
+
+    core.info(`Creating tag ${newTag} against current SHA.`);
     await createTag(newTag, inputs.github_token);
+
+    if (inputs.move_major_tag === "true") {
+      const majorTag = getMajorTag(newTag);
+
+      if (!majorTag) {
+        core.warning(`Not a valid Major tag ${majorTag}, not creating.`);
+        return;
+      }
+      if (valueExistsAsTag(existingTags, majorTag)) {
+        core.info(`Deleting Major tag ${majorTag} from old SHA.`);
+        await deleteTag(majorTag, inputs.github_token);
+      }
+      core.info(`Creating Major tag ${majorTag} against current SHA.`);
+      await createTag(majorTag, inputs.github_token);
+    }
   } catch (error) {
     core.setFailed(error.message);
   }
-}
-
-async function checkSemverTag(token, newTag) {
-  const tags = await getTagsForRepo(token);
-
-  core.info(`Checking if new tag value ${newTag} already exists as tag.`);
-  if (valueExistsAsTag(tags, newTag)) {
-    core.setFailed(`value ${newTag} already exists as tag`);
-    return;
-  }
-
-  return newTag;
 }
 
 run();

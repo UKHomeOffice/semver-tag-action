@@ -1,27 +1,27 @@
-name: Check Dist
-
+name: 'Check'
 on:
   pull_request:
     types: [ opened, reopened, synchronize ]
 
 jobs:
   check-dist:
-    name: Check Dist
+    name: 'Diff Dist'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
-      - name: Set Node.js 16.x
+      - name: Setup Node
         uses: actions/setup-node@v3
         with:
           node-version: 16.x
+          cache: 'npm'
 
       - name: Install dependencies
         run: npm ci
 
       - name: Rebuild the dist/ directory
-        run: |
-          npm run build
+        run: npm run build
 
       - name: Compare the expected and actual dist/ directories
         run: |
