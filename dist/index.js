@@ -11873,14 +11873,16 @@ try {
 const github = __nccwpck_require__(5438);
 const core = __nccwpck_require__(2186);
 
-async function getTagsForRepo(octokit) {
+async function getTagsForRepo(token) {
   core.info("Getting tags from repository.");
 
-  const { data: tags } = await octokit.rest.git.listMatchingRefs({
-    owner: getRepoOwner(github),
-    repo: getRepoName(github),
-    ref: "tags/",
-  });
+  const { data: tags } = await github
+    .getOctokit(token)
+    .rest.git.listMatchingRefs({
+      owner: github.context.payload.repository.owner.login,
+      repo: github.context.payload.repository.name,
+      ref: "tags/",
+    });
 
   core.info(`Retrieved ${tags.length} tags from repository.`);
 
@@ -11890,45 +11892,21 @@ async function getTagsForRepo(octokit) {
   }));
 }
 
-function getRepoOwner({ context } = github) {
-  return context.payload.repository.owner.login;
-}
-
-function getRepoName({ context } = github) {
-  return context.payload.repository.name;
-}
-
-function getTagByCommitSha(tags, sha) {
-  return tags.find((tag) => tag.sha === sha)?.semver;
-}
-
-function getHeadRefSha({ context } = github) {
-  if (isPullRequest()) {
-    return context.payload.pull_request.base?.sha;
-  } else if (isWorkflowDispatch()) {
-    return context.sha;
-  }
-}
-
-function repoHasTag(tags, semver) {
-  return tags.some((tag) => tag.semver === semver);
-}
-
-async function createTag(newTag, octokit, { context } = github) {
+async function createTag(newTag, token, { context } = github) {
   const sha = context.sha;
   const ref = `refs/tags/${newTag}`;
-  await octokit.rest.git.createRef({
+  await github.getOctokit(token).rest.git.createRef({
     ...context.repo,
     ref,
     sha,
   });
 }
 
-function getOctoKit(token) {
-  return github.getOctokit(token);
+function valueExistsAsTag(tags, semver) {
+  return tags.some((tag) => tag.semver === semver);
 }
 
-const isAcceptedEventType = () => {
+const isValidEventType = () => {
   return isPullRequest() || isWorkflowDispatch();
 };
 
@@ -11955,12 +11933,9 @@ const getActionInputs = (variables) => {
 module.exports = {
   createTag,
   getActionInputs,
-  getHeadRefSha,
-  getOctoKit,
-  getTagByCommitSha,
   getTagsForRepo,
-  isAcceptedEventType,
-  repoHasTag,
+  isValidEventType,
+  valueExistsAsTag,
 };
 
 
@@ -11970,53 +11945,13 @@ module.exports = {
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
 const semver = __nccwpck_require__(1383);
-const core = __nccwpck_require__(2186);
-
-function getAllowedSemverIdentifier() {
-  return [
-    "pre",
-    "premajor",
-    "preminor",
-    "prepatch",
-    "prerelease",
-    "major",
-    "minor",
-    "patch",
-  ];
-}
-
-function isSemverIdentifier(identifier) {
-  return getAllowedSemverIdentifier().includes(identifier?.toLowerCase());
-}
 
 function isValidTag(tag) {
   return semver.valid(tag);
 }
 
-function calculateNewTag(tag, identifier) {
-  if (!semver.valid(tag) || !isSemverIdentifier(identifier)) {
-    return;
-  }
-
-  core.info(`Incrementing latest tag "${tag}" by ${identifier}`);
-  const newTag = semver.inc(tag, identifier.toString()).toString();
-  core.info(`Calculated new tag "${newTag}"`);
-
-  return newTag;
-}
-
-function sortTags(tags) {
-  return tags
-    .filter((tag) => semver.valid(tag.semver))
-    .sort((tagA, tagB) => semver.rcompare(tagA.semver, tagB.semver, true));
-}
-
 module.exports = {
-  calculateNewTag,
-  getAllowedSemverIdentifier,
-  isSemverIdentifier,
   isValidTag,
-  sortTags,
 };
 
 
@@ -12195,24 +12130,15 @@ const core = __nccwpck_require__(2186);
 const {
   createTag,
   getActionInputs,
-  getHeadRefSha,
-  getOctoKit,
-  getTagByCommitSha,
   getTagsForRepo,
-  isAcceptedEventType,
-  repoHasTag,
+  isValidEventType,
+  valueExistsAsTag,
 } = __nccwpck_require__(8396);
-const {
-  calculateNewTag,
-  getAllowedSemverIdentifier,
-  isSemverIdentifier,
-  isValidTag,
-  sortTags,
-} = __nccwpck_require__(9225);
+const { isValidTag } = __nccwpck_require__(9225);
 
 async function run() {
   try {
-    if (!isAcceptedEventType()) {
+    if (!isValidEventType()) {
       core.setFailed(
         "Invalid event specified, it should be used on [pull_request, pull_request_target, workflow_dispatch] events."
       );
@@ -12220,68 +12146,30 @@ async function run() {
     }
 
     const inputs = getActionInputs([
-      { name: "increment", options: { required: false } },
       { name: "tag", options: { required: false } },
       { name: "github_token", options: { required: true } },
-      { name: "dry_run", default: false },
-      { name: "default_use_head_tag", default: false },
     ]);
 
-    if (!isValidTag(inputs.tag) && !isSemverIdentifier(inputs.increment)) {
-      core.setFailed(
-        `Invalid increment or SemVer tag provided, acceptable increment values are: ${getAllowedSemverIdentifier().toString()}.`
-      );
+    const newTag = await checkSemverTag(inputs.github_token, inputs.tag);
+
+    if (!isValidTag(newTag)) {
+      core.setFailed("Invalid SemVer tag provided.");
       return;
     }
 
-    const octokit = getOctoKit(inputs.github_token);
-    const repoTags = sortTags(await getTagsForRepo(octokit));
-    const newTag = inputs.tag
-      ? inputs.tag
-      : generateSemverTag(
-          repoTags,
-          inputs.increment.toLowerCase(),
-          inputs.default_use_head_tag
-        );
-
-    if (!newTag) {
-      core.setFailed("No new tag could be created.");
-      return;
-    }
-
-    if (!inputs.dry_run) {
-      core.info(`Creating tag ${newTag}`);
-      await createTag(newTag, octokit);
-    }
-    core.setOutput("version", newTag);
+    core.info(`Creating tag ${newTag}.`);
+    await createTag(newTag, inputs.github_token);
   } catch (error) {
     core.setFailed(error.message);
   }
 }
 
-function generateSemverTag(tags, identifier, defaultGreatest) {
-  if (tags.length === 0) {
-    return calculateNewTag("0.0.0", identifier);
-  }
+async function checkSemverTag(token, newTag) {
+  const tags = await getTagsForRepo(token);
 
-  const headSha = getHeadRefSha();
-  let headSemver = getTagByCommitSha(tags, headSha);
-  if (!headSemver) {
-    if (defaultGreatest) {
-      core.info("No tag found for SHA. Finding highest repository SemVer tag.");
-      headSemver = tags.shift()?.semver;
-    } else {
-      core.setFailed(`No tag found on repository for SHA: ${headSha}`);
-      return;
-    }
-  }
-  core.info(`Using tag ${headSemver}`);
-
-  const newTag = calculateNewTag(headSemver, identifier);
-  core.info(`Checking for new SemVer value: ${newTag}`);
-
-  if (repoHasTag(tags, newTag)) {
-    core.setFailed(`Tag ${newTag} already exists on repository`);
+  core.info(`Checking if new tag value ${newTag} already exists as tag.`);
+  if (valueExistsAsTag(tags, newTag)) {
+    core.setFailed(`value ${newTag} already exists as tag`);
     return;
   }
 
