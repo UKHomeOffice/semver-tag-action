@@ -1,14 +1,16 @@
 const github = require("@actions/github");
 const core = require("@actions/core");
 
-async function getTagsForRepo(octokit) {
+async function getTagsForRepo(token) {
   core.info("Getting tags from repository.");
 
-  const { data: tags } = await octokit.rest.git.listMatchingRefs({
-    owner: getRepoOwner(github),
-    repo: getRepoName(github),
-    ref: "tags/",
-  });
+  const { data: tags } = await github
+    .getOctokit(token)
+    .rest.git.listMatchingRefs({
+      owner: github.context.payload.repository.owner.login,
+      repo: github.context.payload.repository.name,
+      ref: "tags/",
+    });
 
   core.info(`Retrieved ${tags.length} tags from repository.`);
 
@@ -18,45 +20,21 @@ async function getTagsForRepo(octokit) {
   }));
 }
 
-function getRepoOwner({ context } = github) {
-  return context.payload.repository.owner.login;
-}
-
-function getRepoName({ context } = github) {
-  return context.payload.repository.name;
-}
-
-function getTagByCommitSha(tags, sha) {
-  return tags.find((tag) => tag.sha === sha)?.semver;
-}
-
-function getHeadRefSha({ context } = github) {
-  if (isPullRequest()) {
-    return context.payload.pull_request.base?.sha;
-  } else if (isWorkflowDispatch()) {
-    return context.sha;
-  }
-}
-
-function repoHasTag(tags, semver) {
-  return tags.some((tag) => tag.semver === semver);
-}
-
-async function createTag(newTag, octokit, { context } = github) {
+async function createTag(newTag, token, { context } = github) {
   const sha = context.sha;
   const ref = `refs/tags/${newTag}`;
-  await octokit.rest.git.createRef({
+  await github.getOctokit(token).rest.git.createRef({
     ...context.repo,
     ref,
     sha,
   });
 }
 
-function getOctoKit(token) {
-  return github.getOctokit(token);
+function valueExistsAsTag(tags, semver) {
+  return tags.some((tag) => tag.semver === semver);
 }
 
-const isAcceptedEventType = () => {
+const isValidEventType = () => {
   return isPullRequest() || isWorkflowDispatch();
 };
 
@@ -83,10 +61,7 @@ const getActionInputs = (variables) => {
 module.exports = {
   createTag,
   getActionInputs,
-  getHeadRefSha,
-  getOctoKit,
-  getTagByCommitSha,
   getTagsForRepo,
-  isAcceptedEventType,
-  repoHasTag,
+  isValidEventType,
+  valueExistsAsTag,
 };

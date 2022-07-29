@@ -1,7 +1,7 @@
 {
   "name": "semver-tag-action",
   "version": "1.0.0",
-  "description": "Create the next semantic version and tag it",
+  "description": "Tag a semantic version",
   "scripts": {
     "lint": "eslint",
     "test": "jest",
