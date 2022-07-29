@@ -1,6 +1,7 @@
 # SemVer Tag A Commit
 
 Action that tags a commit with a valid SemVer tag.
+Optionally creates or moves a 'Major' tag to the current commit i.e. 'v1' when tagging '1.2.3'
 
 ## Semantic Tagging Action
 
@@ -8,8 +9,9 @@ Action that tags a commit with a valid SemVer tag.
 
 | Input                                                               | Description                                                                 | Default               | Required |
 | ------------------------------------------------------------------- | --------------------------------------------------------------------------- | --------------------- | -------- |
-| [tag](#value) | The tag to use  | | Yes|
+| [tag](#tag) | The tag to use  | | Yes |
 | [github_token](#github_token) | Github API token | | Yes |
+| [move_major_tag](#move_major_tag) | Create or move a 'Major' tag | false | No|
 
 ### Detailed inputs
 
@@ -17,9 +19,30 @@ Action that tags a commit with a valid SemVer tag.
 
 Tag to use, must be a valid SemVer value
 
+#### move_major_tag
+
+Some projects like GitHub actions, reference 'Major' tags e.g 
+
+```yaml
+UKHomeOffice/match-label-action@v1
+```
+
+If true a 'Major' tag will be created or moved to this commit.
+It will contain a 'v' if the Semver value passed does not contain one.
+Example:
+
+| merge_major_tag value       | [tag](#tag) value    | Tags Created  |
+| ----------------------------|--------------------- | --------------|
+| true  | v1.2.3 | v1.2.3, v1|
+| false  | v1.2.3 | 1.2.3|
+| true  | 1.2.3 | 1.2.3, v1|
+| false  | 1.2.3 | 1.2.3|
+
+
 #### github_token
 
 Required to make API requests and tagging. pass using `secrets.GITHUB_TOKEN`.
+
 
 ### Usage
 
@@ -45,7 +68,9 @@ jobs:
           labels: minor,major,patch
           mode: singular
 
-      - uses: UKHomeOffice/semver-calculate-action@main
+      - name: Calculate SemVer value
+        id: calculate
+        uses: UKHomeOffice/semver-calculate-action@main
         with:
           increment: ${{ steps.label.outputs.matchedLabels }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
@@ -53,12 +78,14 @@ jobs:
 
       - uses: some-provider/any-action@main
         with:
-          tag: ${{ steps.label.outputs.version }}
+          tag: ${{ steps.calculate.outputs.version }}
 
-      - uses: UKHomeOffice/semver-tag-action@main
+      - name: Tag Repository
+        uses: UKHomeOffice/semver-tag-action@main
         with:
-          tag: ${{ steps.label.outputs.version }}
+          tag: ${{ steps.calculate.outputs.version }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
+          move_major_tag: true
 ```
 
 ### Generating dist/index.js
