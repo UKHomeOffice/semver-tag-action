@@ -30,6 +30,14 @@ async function createTag(newTag, token, { context } = github) {
   });
 }
 
+async function deleteTag(tag, token, { context } = github) {
+  const ref = `tags/${tag}`;
+  await github.getOctokit(token).rest.git.deleteRef({
+    ...context.repo,
+    ref,
+  });
+}
+
 function valueExistsAsTag(tags, semver) {
   return tags.some((tag) => tag.semver === semver);
 }
@@ -60,6 +68,7 @@ const getActionInputs = (variables) => {
 
 module.exports = {
   createTag,
+  deleteTag,
   getActionInputs,
   getTagsForRepo,
   isValidEventType,
