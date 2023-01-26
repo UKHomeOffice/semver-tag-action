@@ -4,19 +4,16 @@ const core = require("@actions/core");
 async function getTagsForRepo(token) {
   core.info("Getting tags from repository.");
 
-  const { data: tags } = await github
-    .getOctokit(token)
-    .rest.git.listMatchingRefs({
-      owner: github.context.payload.repository.owner.login,
-      repo: github.context.payload.repository.name,
-      ref: "tags/",
-    });
+  const { data: tags } = await github.getOctokit(token).rest.repos.listTags({
+    owner: github.context.payload.repository.owner.login,
+    repo: github.context.payload.repository.name,
+  });
 
   core.info(`Retrieved ${tags.length} tags from repository.`);
 
   return tags.map((tag) => ({
-    semver: tag.ref?.replace(/^refs\/tags\//g, ""),
-    sha: tag.object?.sha,
+    semver: tag.name,
+    sha: tag.commit?.sha,
   }));
 }
 
