@@ -5,4 +5,4 @@ on:
 
 jobs:
   tag:
-    uses: UKHomeOffice/hocs-github-actions/.github/workflows/semver-tag.yml@v2
+    uses: UKHomeOffice/sas-github-workflows/.github/workflows/semver-tag.yml@v1
