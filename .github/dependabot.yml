@@ -9,9 +9,9 @@ updates:
     pull-request-branch-name:
       separator: "-"
     reviewers:
-      - "UKHomeOffice/hocs-core"
+      - "UKHomeOffice/sas-github-workflow"
     labels:
-      - "skip-release"
+      - "patch"
       - "dependencies"
   - package-ecosystem: "npm"
     directory: "/"
@@ -22,7 +22,7 @@ updates:
     pull-request-branch-name:
       separator: "-"
     reviewers:
-      - "UKHomeOffice/hocs-core"
+      - "UKHomeOffice/sas-github-workflow"
     labels:
       - "patch"
       - "dependencies"
