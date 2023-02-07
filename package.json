@@ -5,6 +5,7 @@
   "scripts": {
     "lint": "eslint",
     "test": "jest",
+    "audit": "npm audit",
     "build": "ncc build ./src/index.js -o ./dist --source-map --license licenses.txt",
     "all": "npm run lint && npm run test && npm run build"
   },
