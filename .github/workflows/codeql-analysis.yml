@@ -1,0 +1,14 @@
+name: "CodeQL Scan"
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    - cron: '45 12 * * 1'
+
+jobs:
+  scan:
+    uses: UKHomeOffice/sas-github-workflows/.github/workflows/codeql-analysis-npm.yml@v1
+    secrets: inherit
