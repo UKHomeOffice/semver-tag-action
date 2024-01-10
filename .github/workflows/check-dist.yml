@@ -5,4 +5,4 @@ on:
 
 jobs:
   diff:
-    uses: UKHomeOffice/sas-github-workflows/.github/workflows/actions-check-dist.yml@v1
+    uses: UKHomeOffice/sas-github-workflows/.github/workflows/actions-check-dist.yml@v2
