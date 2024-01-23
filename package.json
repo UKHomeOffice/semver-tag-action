@@ -2,6 +2,9 @@
   "name": "semver-tag-action",
   "version": "1.0.0",
   "description": "Tag a semantic version",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "lint": "eslint",
     "test": "jest",
